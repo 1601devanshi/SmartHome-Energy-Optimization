@@ -73,24 +73,9 @@ The Genetic Algorithm is a heuristic search method, so it does not guarantee a g
 
 ## 🔄 5. Genetic Algorithm Workflow
 
-```mermaid
-flowchart TD
-    A(["Start"]) --> B["Load Appliance Configuration"]
-    B --> C["Load 24-Hour Tariffs"]
-    C --> D["Configure GA Parameters"]
-    D --> E["Generate Initial Population"]
-    E --> F["Evaluate Schedule Fitness"]
-    F --> G["Select Parents"]
-    G --> H["Apply Crossover"]
-    H --> I["Apply Mutation"]
-    I --> J["Preserve Best Candidates"]
-    J --> K{"More Generations?"}
-    K -- Yes --> F
-    K -- No --> L["Select Best Candidate"]
-    L --> M["Compare Schedules"]
-    M --> N["Display Charts and Reports"]
-    N --> O(["End"])
-```
+View the complete workflow diagram separately:
+
+[**Open Genetic Algorithm Workflow →**](diagrams/ga-workflow.md)
 
 ## 🏗️ 6. System Architecture
 
@@ -98,26 +83,10 @@ The project separates the user interface from the optimization logic.
 
 - **`app.py`** provides the Streamlit dashboard and user interactions.
 - **`main.py`** contains the optimization engine and scheduling logic.
-- **`requirements.txt`** lists the Python packages needed to run the project.
-- **`smarthome_config.json`**, when created by the application, stores local configuration data.
+- **`requirements.txt`** lists the required Python packages.
+- **`smarthome_config.json`** stores local configuration data when created by the application.
 
-```mermaid
-flowchart TD
-    U["User"] --> UI["Streamlit Dashboard<br/>app.py"]
-    UI --> A["Appliance Configuration"]
-    UI --> T["Hourly Electricity Tariffs"]
-    A --> E["Optimization Engine<br/>main.py"]
-    T --> E
-    E --> GA["Genetic Algorithm"]
-    E --> B["Baseline Scheduler"]
-    E --> G["Greedy Benchmark"]
-    GA --> R["Schedule Evaluation"]
-    B --> R
-    G --> R
-    R --> M["Cost, Energy and Peak Load Metrics"]
-    M --> C["Interactive Charts"]
-    M --> X["CSV Report Export"]
-```
+[**Open System Architecture Diagram →**](diagrams/system-architecture.md)
 
 ## 🧮 7. Energy and Cost Calculations
 
@@ -181,8 +150,10 @@ The JSON configuration file may be created at runtime and may not exist in a fre
 Replace `YOUR_GITHUB_USERNAME` with your GitHub username.
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/SmartHome-Energy-Optimization.git
+
+git clone https://github.com/1601devanshi/SmartHome-Energy-Optimization.git
 cd SmartHome-Energy-Optimization
+
 ```
 
 Alternatively, download the repository as a ZIP file and extract it.
