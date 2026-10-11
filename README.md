@@ -10,6 +10,16 @@ An interactive Python and Streamlit application that optimizes household applian
 
 ---
 
+## 🌐 Live Demo
+
+🚀 **Try SmartHome Energy Optimization Live!**
+
+Explore the interactive Streamlit dashboard to optimize smart home appliance schedules using a Genetic Algorithm, compare scheduling strategies, and analyze estimated electricity costs and peak energy demand.
+
+👉 https://smarthome-energy-optimization.onrender.com
+
+---
+
 ## 📌 1. Project Overview
 
 Electricity tariffs can vary throughout the day, while many household appliances do not need to operate at a fixed time. Running flexible appliances during lower-tariff periods can help reduce electricity costs.
