@@ -1,8 +1,6 @@
-"""Smart Home Energy Scheduler Using Genetic Algorithm.
+"""Smart Home Energy Scheduler using a Genetic Algorithm.
 
-A small, college-level command-line project. It uses a Genetic Algorithm to
-schedule flexible home appliances during lower-tariff hours while discouraging
-excessive simultaneous electricity demand. No third-party packages required.
+Educational simulation. It does not connect to real meters or control hardware.
 """
 from __future__ import annotations
 
@@ -11,8 +9,6 @@ from dataclasses import dataclass
 from typing import Sequence
 
 HOURS = 24
-
-# Illustrative hourly rates in Indian rupees per kWh. Replace with local rates.
 DEFAULT_TARIFF = [
     5.0, 4.8, 4.6, 4.5, 4.5, 4.8, 5.5, 6.5,
     7.0, 7.5, 7.2, 6.8, 6.5, 6.2, 6.5, 7.0,
@@ -30,48 +26,14 @@ class Appliance:
     flexible: bool = True
 
     def valid_starts(self) -> list[int]:
-        latest = min(self.latest, HOURS - self.duration)
-        if self.duration < 1 or self.duration > HOURS or self.earliest < 0:
+        if self.duration < 1 or self.duration > HOURS or self.earliest < 0 or self.earliest > 23:
             return []
+        latest = min(self.latest, HOURS - self.duration)
         if self.earliest > latest:
             return []
         if not self.flexible:
-            return [self.earliest] if self.earliest <= latest else []
+            return [self.earliest]
         return list(range(self.earliest, latest + 1))
-
-
-def hour_label(hour: int) -> str:
-    return "24:00" if hour == 24 else f"{hour:02d}:00"
-
-
-def ask_int(prompt: str, minimum: int, maximum: int, default: int | None = None) -> int:
-    while True:
-        suffix = f" [{default}]" if default is not None else ""
-        raw = input(f"{prompt} ({minimum}-{maximum}){suffix}: ").strip()
-        if not raw and default is not None:
-            return default
-        try:
-            value = int(raw)
-            if minimum <= value <= maximum:
-                return value
-        except ValueError:
-            pass
-        print(f"Please enter a whole number from {minimum} to {maximum}.")
-
-
-def ask_float(prompt: str, minimum: float, default: float | None = None) -> float:
-    while True:
-        suffix = f" [{default}]" if default is not None else ""
-        raw = input(f"{prompt}{suffix}: ").strip()
-        if not raw and default is not None:
-            return default
-        try:
-            value = float(raw)
-            if value >= minimum:
-                return value
-        except ValueError:
-            pass
-        print(f"Please enter a number greater than or equal to {minimum}.")
 
 
 def default_appliances() -> list[Appliance]:
@@ -84,102 +46,47 @@ def default_appliances() -> list[Appliance]:
     ]
 
 
-def add_appliance(appliances: list[Appliance]) -> None:
-    print("\nAdd a custom appliance")
-    name = input("Appliance name: ").strip()
-    if not name:
-        print("Name cannot be empty.")
-        return
-    if any(a.name.lower() == name.lower() for a in appliances):
-        print("An appliance with that name already exists.")
-        return
-    power = ask_float("Power consumption in kW (e.g. 750 W = 0.75 kW)", 0.01)
-    duration = ask_int("Operating duration in hours", 1, 24)
-    earliest = ask_int("Earliest permitted start hour (24-hour clock)", 0, 23)
-    latest = ask_int("Latest permitted start hour (24-hour clock)", earliest, 23)
-    flexible_answer = input("Can the algorithm shift its start time? [Y/n]: ").strip().lower()
-    appliance = Appliance(name, power, duration, earliest, latest, flexible_answer not in {"n", "no"})
-    if not appliance.valid_starts():
-        print("Those settings are not feasible. The run duration must fit before midnight.")
-        return
-    appliances.append(appliance)
-    print(f"Added {name}.")
-
-
-def show_appliances(appliances: Sequence[Appliance]) -> None:
-    print("\nAPPLIANCE CONFIGURATION")
-    print("-" * 94)
-    print(f"{'#':<3} {'Appliance':<22} {'Power (kW)':>11} {'Duration':>10} {'Allowed start window':>22} {'Flexible':>10}")
-    print("-" * 94)
-    for i, a in enumerate(appliances, 1):
-        print(f"{i:<3} {a.name[:21]:<22} {a.power_kw:>11.2f} {a.duration:>8} h {hour_label(a.earliest)}–{hour_label(a.latest):<15} {('Yes' if a.flexible else 'No'):>8}")
-    print("-" * 94)
-
-
-def edit_appliance(appliances: list[Appliance]) -> None:
-    if not appliances:
-        print("No appliances to edit.")
-        return
-    show_appliances(appliances)
-    index = ask_int("Select appliance number to edit", 1, len(appliances)) - 1
-    old = appliances[index]
-    print("Press Enter to keep the current value.")
-    name = input(f"Name [{old.name}]: ").strip() or old.name
-    power = ask_float(f"Power in kW [{old.power_kw}]", 0.01, old.power_kw)
-    duration = ask_int("Duration in hours", 1, 24, old.duration)
-    earliest = ask_int("Earliest start hour", 0, 23, old.earliest)
-    latest = ask_int("Latest start hour", earliest, 23, max(old.latest, earliest))
-    flex_text = input(f"Flexible? [Y/n, current {'yes' if old.flexible else 'no'}]: ").strip().lower()
-    flexible = old.flexible if not flex_text else flex_text not in {"n", "no"}
-    edited = Appliance(name, power, duration, earliest, latest, flexible)
-    if not edited.valid_starts():
-        print("Edit not saved: these settings do not form a valid schedule window.")
-        return
-    if any(i != index and a.name.lower() == name.lower() for i, a in enumerate(appliances)):
-        print("Edit not saved: appliance names must be unique.")
-        return
-    appliances[index] = edited
-    print("Appliance updated.")
-
-
-def remove_appliance(appliances: list[Appliance]) -> None:
-    if not appliances:
-        print("No appliances to remove.")
-        return
-    show_appliances(appliances)
-    index = ask_int("Select appliance number to remove", 1, len(appliances)) - 1
-    removed = appliances.pop(index)
-    print(f"Removed {removed.name}.")
-
-
-def set_tariffs(tariffs: list[float]) -> None:
-    print("\nHOURLY ELECTRICITY TARIFFS")
-    print("Rates are in ₹ per kWh. Enter a new rate, or press Enter to keep the current rate.")
-    for hour in range(HOURS):
-        while True:
-            raw = input(f"{hour_label(hour)}  ₹{tariffs[hour]:.2f} [{tariffs[hour]:.2f}]: ").strip()
-            if not raw:
-                break
-            try:
-                value = float(raw)
-                if value >= 0:
-                    tariffs[hour] = value
-                    break
-            except ValueError:
-                pass
-            print("Enter a non-negative number.")
+def hour_label(hour: int) -> str:
+    return "24:00" if hour == 24 else f"{hour:02d}:00"
 
 
 def build_hourly_load(starts: Sequence[int], appliances: Sequence[Appliance]) -> list[float]:
+    if len(starts) != len(appliances):
+        raise ValueError("Every appliance must have exactly one scheduled start hour.")
     load = [0.0] * HOURS
     for start, appliance in zip(starts, appliances):
+        start = int(start)
+        if start not in appliance.valid_starts():
+            raise ValueError(f"Invalid start hour {start} for appliance '{appliance.name}'.")
         for hour in range(start, min(HOURS, start + appliance.duration)):
-            load[hour] += appliance.power_kw
+            load[hour] += float(appliance.power_kw)
     return load
 
 
-def evaluate(starts: Sequence[int], appliances: Sequence[Appliance], tariffs: Sequence[float], max_load: float, overload_penalty: float = 25.0) -> dict:
-    """Evaluate a schedule; reject invalid genes rather than silently truncating them."""
+def normalize_solar_profile(solar_generation: Sequence[float] | None) -> list[float]:
+    if solar_generation is None:
+        return [0.0] * HOURS
+    if len(solar_generation) != HOURS:
+        raise ValueError("Solar generation profile must contain exactly 24 hourly values.")
+    profile = [float(v) for v in solar_generation]
+    if any(v < 0 for v in profile):
+        raise ValueError("Solar generation cannot be negative.")
+    return profile
+
+
+def evaluate(
+    starts: Sequence[int],
+    appliances: Sequence[Appliance],
+    tariffs: Sequence[float],
+    max_load: float,
+    overload_penalty: float = 25.0,
+    solar_generation: Sequence[float] | None = None,
+) -> dict:
+    """Evaluate a schedule; lower fitness is better.
+
+    The load limit applies to total appliance demand. Solar reduces grid imports,
+    but it does not change the physical demand of the appliances.
+    """
     if len(tariffs) != HOURS:
         raise ValueError("Exactly 24 hourly tariff rates are required.")
     if len(starts) != len(appliances):
@@ -188,53 +95,96 @@ def evaluate(starts: Sequence[int], appliances: Sequence[Appliance], tariffs: Se
         raise ValueError("Maximum hourly load must be greater than zero.")
     if any(float(rate) < 0 for rate in tariffs):
         raise ValueError("Tariff rates cannot be negative.")
-    for start, appliance in zip(starts, appliances):
-        if int(start) not in appliance.valid_starts():
-            raise ValueError(f"Invalid start hour {start} for appliance '{appliance.name}'.")
     load = build_hourly_load(starts, appliances)
-    hourly_cost = [load[h] * tariffs[h] for h in range(HOURS)]
+    solar = normalize_solar_profile(solar_generation)
+    solar_used = [min(load[h], solar[h]) for h in range(HOURS)]
+    grid_import = [max(0.0, load[h] - solar[h]) for h in range(HOURS)]
+    solar_surplus = [max(0.0, solar[h] - load[h]) for h in range(HOURS)]
+    hourly_cost = [grid_import[h] * float(tariffs[h]) for h in range(HOURS)]
     cost = sum(hourly_cost)
     overload = sum(max(0.0, value - max_load) ** 2 for value in load)
-    energy = sum(a.power_kw * a.duration for a in appliances)
+    energy = sum(float(a.power_kw) * int(a.duration) for a in appliances)
+    solar_generated_kwh = sum(solar)
+    solar_used_kwh = sum(solar_used)
+    grid_import_kwh = sum(grid_import)
     return {
-        "starts": list(starts), "load": load, "hourly_cost": hourly_cost,
-        "cost": cost, "energy": energy, "peak": max(load, default=0.0),
-        "overload": overload, "fitness": cost + overload_penalty * overload,
+        "starts": [int(s) for s in starts],
+        "load": load,
+        "hourly_cost": hourly_cost,
+        "cost": cost,
+        "energy": energy,
+        "peak": max(load, default=0.0),
+        "overload": overload,
+        "fitness": cost + float(overload_penalty) * overload,
         "overload_hours": sum(value > max_load for value in load),
-        "max_load": max_load,
-        "load_limit_met": all(value <= max_load for value in load),
+        "max_load": float(max_load),
+        "load_limit_met": all(value <= max_load + 1e-9 for value in load),
+        "solar_generation": solar,
+        "solar_used": solar_used,
+        "solar_surplus": solar_surplus,
+        "solar_generated_kwh": solar_generated_kwh,
+        "solar_used_kwh": solar_used_kwh,
+        "grid_import": grid_import,
+        "grid_import_kwh": grid_import_kwh,
+        "solar_utilization_pct": (solar_used_kwh / solar_generated_kwh * 100) if solar_generated_kwh else 0.0,
     }
 
 
-def greedy_schedule(appliances: Sequence[Appliance], tariffs: Sequence[float], max_load: float = 5.0) -> dict:
-    """Construct a simple tariff-aware comparison schedule, choosing the cheapest valid start per appliance."""
+def greedy_schedule(
+    appliances: Sequence[Appliance],
+    tariffs: Sequence[float],
+    max_load: float = 5.0,
+    solar_generation: Sequence[float] | None = None,
+    overload_penalty: float = 25.0,
+) -> dict:
+    """Load-aware greedy benchmark using incremental grid cost and overload."""
+    if not appliances:
+        raise ValueError("Add at least one appliance first.")
     if len(tariffs) != HOURS:
         raise ValueError("Exactly 24 hourly tariff rates are required.")
-    starts: list[int] = []
-    for appliance in sorted(appliances, key=lambda item: item.power_kw * item.duration, reverse=True):
+    solar = normalize_solar_profile(solar_generation)
+    current_load = [0.0] * HOURS
+    chosen: dict[str, int] = {}
+    ordered = sorted(appliances, key=lambda a: a.power_kw * a.duration, reverse=True)
+    for appliance in ordered:
         domain = appliance.valid_starts()
         if not domain:
             raise ValueError(f"Invalid operating window for '{appliance.name}'.")
-        # Select the start with lowest incremental cost; break ties using lower resulting peak load.
         def candidate_key(start: int):
-            trial = starts + [start]
-            partial_appliances = list(appliances[:len(starts)])  # only used as a deterministic tie fallback
-            cost = sum(appliance.power_kw * tariffs[h] for h in range(start, start + appliance.duration))
-            peak = appliance.power_kw
-            return (cost, peak, start)
-        starts.append(min(domain, key=candidate_key))
-    # The sorted construction order differs from the original appliance order, so map by identity/name.
-    scheduled_by_name = {a.name: start for a, start in zip(
-        sorted(appliances, key=lambda item: item.power_kw * item.duration, reverse=True), starts
-    )}
-    return evaluate([scheduled_by_name[a.name] for a in appliances], appliances, tariffs, max_load)
+            incremental_cost = 0.0
+            incremental_overload = 0.0
+            resulting_peak = 0.0
+            for h in range(start, start + appliance.duration):
+                before = current_load[h]
+                after = before + appliance.power_kw
+                before_grid = max(0.0, before - solar[h])
+                after_grid = max(0.0, after - solar[h])
+                incremental_cost += (after_grid - before_grid) * float(tariffs[h])
+                incremental_overload += max(0.0, after - max_load) ** 2 - max(0.0, before - max_load) ** 2
+                resulting_peak = max(resulting_peak, after)
+            score = incremental_cost + overload_penalty * incremental_overload
+            return (score, resulting_peak, start)
+        start = min(domain, key=candidate_key)
+        chosen[appliance.name] = start
+        for h in range(start, start + appliance.duration):
+            current_load[h] += appliance.power_kw
+    starts = [chosen[a.name] for a in appliances]
+    return evaluate(starts, appliances, tariffs, max_load, overload_penalty, solar)
 
 
-def genetic_algorithm(appliances: Sequence[Appliance], tariffs: Sequence[float], max_load: float = 5.0,
-                      population_size: int = 80, generations: int = 120, mutation_rate: float = 0.12,
-                      crossover_rate: float = 0.85, seed: int = 42) -> dict:
-    """Optimize appliance start times with selection, crossover, mutation and elitism."""
-    domains = [a.valid_starts() for a in appliances]
+def genetic_algorithm(
+    appliances: Sequence[Appliance],
+    tariffs: Sequence[float],
+    max_load: float = 5.0,
+    population_size: int = 80,
+    generations: int = 120,
+    mutation_rate: float = 0.12,
+    crossover_rate: float = 0.85,
+    seed: int = 42,
+    solar_generation: Sequence[float] | None = None,
+    overload_penalty: float = 25.0,
+) -> dict:
+    """Run a GA with tournament selection, uniform crossover, mutation and elitism."""
     if not appliances:
         raise ValueError("Add at least one appliance first.")
     if len(tariffs) != HOURS:
@@ -247,37 +197,48 @@ def genetic_algorithm(appliances: Sequence[Appliance], tariffs: Sequence[float],
         raise ValueError("Mutation and crossover probabilities must be between 0 and 1.")
     if max_load <= 0:
         raise ValueError("Maximum hourly load must be greater than zero.")
+    domains = [a.valid_starts() for a in appliances]
     if any(not domain for domain in domains):
         raise ValueError("One or more appliances have an invalid operating window.")
+    solar = normalize_solar_profile(solar_generation)
     rng = random.Random(seed)
 
     def random_chromosome() -> list[int]:
         return [rng.choice(domain) for domain in domains]
 
     def score(chromosome: Sequence[int]) -> float:
-        return evaluate(chromosome, appliances, tariffs, max_load)["fitness"]
+        return evaluate(chromosome, appliances, tariffs, max_load, overload_penalty, solar)["fitness"]
 
     def select(population: list[list[int]], scores: list[float]) -> list[int]:
-        candidates = [rng.randrange(len(population)) for _ in range(3)]
-        winner = min(candidates, key=lambda i: scores[i])
+        contestants = [rng.randrange(len(population)) for _ in range(3)]
+        winner = min(contestants, key=lambda i: scores[i])
         return population[winner][:]
 
     population = [random_chromosome() for _ in range(population_size)]
-    best = min(population, key=score)[:]
-    best_score = score(best)
+    global_best = min(population, key=score)[:]
+    global_best_score = score(global_best)
     history: list[float] = []
+    average_history: list[float] = []
+    generation_best_history: list[float] = []
+    elite_count = max(1, population_size // 20)
 
     for _ in range(generations):
         scores = [score(chromosome) for chromosome in population]
-        best_index = min(range(len(population)), key=lambda i: scores[i])
-        if scores[best_index] < best_score:
-            best, best_score = population[best_index][:], scores[best_index]
-        history.append(best_score)
+        generation_best_score = min(scores)
+        if generation_best_score < global_best_score:
+            idx = scores.index(generation_best_score)
+            global_best = population[idx][:]
+            global_best_score = generation_best_score
+        history.append(global_best_score)  # best-so-far; should never increase
+        average_history.append(sum(scores) / len(scores))
+        generation_best_history.append(generation_best_score)
+
         ranked = sorted(zip(scores, population), key=lambda item: item[0])
-        next_population = [chromosome[:] for _, chromosome in ranked[:max(1, population_size // 20)]]
+        next_population = [chromosome[:] for _, chromosome in ranked[:elite_count]]
         while len(next_population) < population_size:
-            p1, p2 = select(population, scores), select(population, scores)
-            child1, child2 = p1[:], p2[:]
+            parent1 = select(population, scores)
+            parent2 = select(population, scores)
+            child1, child2 = parent1[:], parent2[:]
             if len(appliances) > 1 and rng.random() < crossover_rate:
                 for gene in range(len(appliances)):
                     if rng.random() < 0.5:
@@ -291,97 +252,10 @@ def genetic_algorithm(appliances: Sequence[Appliance], tariffs: Sequence[float],
                     break
         population = next_population
 
-    result = evaluate(best, appliances, tariffs, max_load)
+    result = evaluate(global_best, appliances, tariffs, max_load, overload_penalty, solar)
     result["history"] = history
+    result["average_history"] = average_history
+    result["generation_best_history"] = generation_best_history
+    result["generations_processed"] = len(history)
+    result["seed"] = seed
     return result
-
-
-def print_schedule(title: str, result: dict, appliances: Sequence[Appliance]) -> None:
-    print(f"\n{title}")
-    print("-" * 78)
-    print(f"{'Appliance':<24} {'Start':>9} {'End':>9} {'Power':>10} {'Energy':>10}")
-    print("-" * 78)
-    for appliance, start in zip(appliances, result["starts"]):
-        print(f"{appliance.name[:23]:<24} {hour_label(start):>9} {hour_label(start + appliance.duration):>9} {appliance.power_kw:>8.2f} kW {appliance.power_kw * appliance.duration:>7.2f} kWh")
-    print("-" * 78)
-    print(f"Daily energy: {result['energy']:.2f} kWh | Estimated cost: ₹{result['cost']:.2f} | Peak load: {result['peak']:.2f} kW")
-
-
-def print_hourly_report(result: dict, tariffs: Sequence[float], max_load: float) -> None:
-    print("\nHOURLY LOAD AND COST REPORT")
-    print("Hour     Tariff (₹/kWh)    Load (kW)    Cost (₹)    Load status")
-    print("-" * 69)
-    for hour in range(HOURS):
-        load = result["load"][hour]
-        status = "OVER TARGET" if load > max_load else "OK"
-        print(f"{hour_label(hour):<8} {tariffs[hour]:>10.2f} {load:>15.2f} {result['hourly_cost'][hour]:>11.2f}    {status}")
-
-
-def main() -> None:
-    appliances = default_appliances()
-    tariffs = DEFAULT_TARIFF[:]
-    print("=" * 68)
-    print(" SMART HOME ENERGY SCHEDULER USING GENETIC ALGORITHM")
-    print(" College Project | Python | Command-line application")
-    print("=" * 68)
-    print("Goal: schedule flexible appliances in lower-cost hours while limiting peak load.")
-
-    while True:
-        print("\nMAIN MENU")
-        print("1. View appliances")
-        print("2. Add a custom appliance")
-        print("3. Edit an appliance")
-        print("4. Remove an appliance")
-        print("5. Customize hourly electricity tariffs")
-        print("6. Run Genetic Algorithm and compare schedules")
-        print("7. Exit")
-        choice = input("Choose an option (1-7): ").strip()
-
-        if choice == "1":
-            show_appliances(appliances)
-        elif choice == "2":
-            add_appliance(appliances)
-        elif choice == "3":
-            edit_appliance(appliances)
-        elif choice == "4":
-            remove_appliance(appliances)
-        elif choice == "5":
-            set_tariffs(tariffs)
-        elif choice == "6":
-            if not appliances:
-                print("Add at least one appliance before running the algorithm.")
-                continue
-            invalid = [a.name for a in appliances if not a.valid_starts()]
-            if invalid:
-                print("Invalid operating windows: " + ", ".join(invalid))
-                continue
-            max_load = ask_float("Preferred maximum simultaneous load in kW", 0.1, 5.0)
-            population_size = ask_int("Genetic Algorithm population size", 10, 500, 80)
-            generations = ask_int("Number of generations", 10, 1000, 120)
-            seed = ask_int("Random seed (repeatable results)", 0, 1_000_000, 42)
-            baseline_starts = [a.valid_starts()[0] for a in appliances]
-            baseline = evaluate(baseline_starts, appliances, tariffs, max_load)
-            optimized = genetic_algorithm(appliances, tariffs, max_load, population_size, generations, seed=seed)
-            print_schedule("BASELINE SCHEDULE (earliest allowed start)", baseline, appliances)
-            print_schedule("OPTIMIZED SCHEDULE (Genetic Algorithm)", optimized, appliances)
-            savings = baseline["cost"] - optimized["cost"]
-            percentage = (savings / baseline["cost"] * 100) if baseline["cost"] else 0.0
-            print("\nOPTIMIZATION SUMMARY")
-            print(f"Baseline electricity cost : ₹{baseline['cost']:.2f}")
-            print(f"Optimized electricity cost: ₹{optimized['cost']:.2f}")
-            print(f"Estimated cost difference : ₹{savings:.2f} ({percentage:.2f}%)")
-            print(f"Baseline peak load        : {baseline['peak']:.2f} kW")
-            print(f"Optimized peak load       : {optimized['peak']:.2f} kW")
-            print(f"Generations processed     : {len(optimized['history'])}")
-            print(f"Best fitness at start/end : {optimized['history'][0]:.2f} / {optimized['history'][-1]:.2f}")
-            print_hourly_report(optimized, tariffs, max_load)
-            input("\nPress Enter to return to the main menu...")
-        elif choice == "7":
-            print("Thank you for using Smart Home Energy Scheduler. Goodbye!")
-            break
-        else:
-            print("Invalid option. Please choose a number from 1 to 7.")
-
-
-if __name__ == "__main__":
-    main()

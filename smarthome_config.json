@@ -82,5 +82,10 @@
     7.0,
     6.0,
     5.5
-  ]
+  ],
+  "solar": {
+    "capacity_kw": 8.5,
+    "generation_factor": 0.45,
+    "enabled": true
+  }
 }
